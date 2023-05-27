@@ -1,0 +1,1194 @@
+---
+title: "final_project_analysis"
+author: "Deborah Franza"
+date: "2023-05-18"
+output: html_document
+---
+
+```{r}
+#libraries
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(tidyverse)
+library(forecast)
+library(ggridges)
+library(patchwork)
+
+```
+
+#Tables
+```{r}
+df_res <- read.csv("results.csv")
+df_art <- read.csv("articles.csv")
+df_twit <- read.csv("twitter.csv")
+df_vote <- read.csv("voters.csv")
+
+twit_model_table <- read.csv("state_twitter_model.csv")
+media_model_table <- read.csv("media_article_model.csv")
+elec_state <- read.csv("election_state_h_r.csv")
+```
+
+## determine subphrases for bias categories
+```{r}
+# Convert the column from character to factor
+# df_art$socio_eco <- as.factor(df_art$socio_eco)
+# 
+# # Retrieve all possible categories
+# categories <- levels(df_art$socio_eco)
+# print(categories)
+```
+
+```{r}
+print(df_art)
+colnames(df_art)
+```
+
+```{r}
+# Check if a column is completely empty
+is_empty <- all(is.na(df_art$socio_eco))
+```
+
+```{r}
+# summary(df_art)
+typeof(df_art)
+# head(df_art)
+```
+##media sentiment scores tables
+```{r}
+media_abortion <- df_art %>%
+  filter(!is.na(abortion) & abortion != "") %>%
+  distinct() %>% 
+  select(year, abortion_scores = compound) %>%
+  mutate(year = as.factor(year)) %>%
+  filter(year != "2022")
+
+media_race <- df_art %>%
+  filter(!is.na(race) & race != "") %>%
+  distinct() %>% 
+  select(year, race_scores = compound) %>%
+  mutate(year = as.factor(year))
+
+media_immigration <- df_art %>%
+  filter(!is.na(immigration) & immigration != "") %>%
+  distinct() %>% 
+  select(year, immigration_scores = compound)%>%
+  mutate(year = as.factor(year)) %>%
+  filter(year != "2023")
+
+media_socio_eco <- df_art %>%
+  filter(!is.na(socio_eco) & socio_eco != "") %>%
+  distinct() %>% 
+  select(year, socio_eco_scores = compound)%>%
+  mutate(year = as.factor(year))
+
+```
+
+```{r}
+nrow(df_twit %>%
+  filter(!is.na(abortion) & abortion != "") %>%
+  distinct() %>%
+  select(year, abortion_scores = compound) %>%
+  mutate(year = as.factor(year)))
+
+nrow(df_twit %>%
+  filter(!is.na(abortion) & abortion != "")%>%
+  distinct())
+
+test <- df_twit %>%
+  filter(!is.na(abortion) & abortion != "")%>%
+  distinct()
+
+```
+
+##twitter sentiment scores tables
+```{r}
+twit_abortion <- df_twit %>%
+  filter(!is.na(abortion) & abortion != "") %>%
+  distinct() %>%
+  select(year, abortion_scores = compound) %>%
+  mutate(year = as.factor(year))
+
+twit_race <- df_twit %>%
+  filter(!is.na(race) & race != "") %>%
+  distinct() %>% 
+  select(year, race_scores = compound) %>%
+  mutate(year = as.factor(year))
+
+twit_immigration <- df_twit %>%
+  filter(!is.na(immigration) & immigration != "") %>%
+  distinct() %>% 
+  select(year, immigration_scores = compound)%>%
+  mutate(year = as.factor(year))
+
+twit_socio_eco <- df_twit %>%
+  filter(!is.na(socio_eco) & socio_eco != "") %>%
+  distinct() %>%
+  select(year, socio_eco_scores = compound)%>%
+  mutate(year = as.factor(year))
+```
+
+##twitter state and vote counts
+```{r}
+
+  # Joining a column from a secondary table based on state and year
+twitter <- left_join(df_twit, df_vote, by = c("state", "year"))
+
+```
+
+## twitter & media abortion scores
+```{r}
+# abortion_merged <- full_join(media_abortion %>% rename(media_abortion_scores = abortion_scores),
+#                              twit_abortion %>% rename(twitter_abortion_scores = abortion_scores),
+#                              by = "year")
+```
+
+```{r}
+#media
+media_wide_table <- media_abortion %>%
+  pivot_wider(names_from = year, values_from = abortion_scores) %>% 
+  mutate(score_source = c("news article sentiment scores")) 
+
+#twitter
+twitter_wide_table <- twit_abortion %>%
+  pivot_wider(names_from = year, values_from = abortion_scores)%>% 
+  mutate(score_source = c("twitter sentiment scores"))
+
+#combine scores from both twitter and media
+wide_combined_table <- rbind(media_wide_table, twitter_wide_table)
+
+# 'expanded_table' will now have separate rows for each score in the 'score_value' column,
+# with the corresponding 'score_type' and 'year' values.
+expanded_abortion_scores <- wide_combined_table %>%
+  pivot_longer(cols = c("2016", "2017", "2018", "2019", "2020"),
+               names_to = "year",
+               values_to = "score_value") %>% 
+  arrange(year) %>%
+  unnest(score_value) %>% 
+  mutate(score_source = as.factor(score_source),
+         year = as.factor(year))
+
+# Assuming your dataframe is named 'df'
+write.csv(expanded_abortion_scores, "anova_abortion.csv", row.names = FALSE)
+
+```
+## twitter & media race scores
+```{r}
+#media
+media_wide_table <- media_race %>%
+  pivot_wider(names_from = year, values_from = race_scores) %>% 
+  mutate(score_source = c("news article sentiment scores")) 
+
+#twitter
+twitter_wide_table <- twit_race %>%
+  pivot_wider(names_from = year, values_from = race_scores)%>% 
+  mutate(score_source = c("twitter sentiment scores"))
+
+#combine scores from both twitter and media
+wide_combined_table <- rbind(media_wide_table, twitter_wide_table)
+
+# 'expanded_table' will now have separate rows for each score in the 'score_value' column,
+# with the corresponding 'score_type' and 'year' values.
+expanded_race_scores <- wide_combined_table %>%
+  pivot_longer(cols = c("2016", "2017", "2018", "2019", "2020"),
+               names_to = "year",
+               values_to = "score_value") %>% 
+  arrange(year) %>%
+  unnest(score_value) %>% 
+  mutate(score_source = as.factor(score_source),
+         year = as.factor(year))
+#convert to csv
+write.csv(expanded_race_scores, "anova_race.csv", row.names = FALSE)
+
+```
+## twitter & media immigration scores
+```{r}
+#media
+media_wide_table <- media_immigration %>%
+  pivot_wider(names_from = year, values_from = immigration_scores) %>% 
+  mutate(score_source = c("news article sentiment scores"))
+
+#twitter
+twitter_wide_table <- twit_immigration %>%
+  pivot_wider(names_from = year, values_from = immigration_scores)%>% 
+  mutate(score_source = c("twitter sentiment scores"))
+
+#combine scores from both twitter and media
+wide_combined_table <- rbind(media_wide_table, twitter_wide_table)
+
+# 'expanded_table' will now have separate rows for each score in the 'score_value' column,
+# with the corresponding 'score_type' and 'year' values.
+expanded_immigration_scores <- wide_combined_table %>%
+  pivot_longer(cols = c("2016", "2017", "2018", "2019", "2020"),
+               names_to = "year",
+               values_to = "score_value") %>% 
+  arrange(year) %>%
+  unnest(score_value) %>% 
+  mutate(score_source = as.factor(score_source),
+         year = as.factor(year))
+
+#convert to csv
+write.csv(expanded_immigration_scores, "anova_immigration.csv", row.names = FALSE)
+
+```
+
+## twitter & media socio-economic scores
+```{r}
+#media
+media_wide_table <- media_socio_eco %>%
+  pivot_wider(names_from = year, values_from = socio_eco_scores) %>% 
+  mutate(score_source = c("news article sentiment scores")) 
+
+#twitter
+twitter_wide_table <- twit_socio_eco %>%
+  pivot_wider(names_from = year, values_from = socio_eco_scores)%>% 
+  mutate(score_source = c("twitter sentiment scores"))
+
+#combine scores from both twitter and media
+wide_combined_table <- rbind(media_wide_table, twitter_wide_table)
+
+# 'expanded_table' will now have separate rows for each score in the 'score_value' column,
+# with the corresponding 'score_type' and 'year' values.
+expanded_socio_eco_scores <- wide_combined_table %>%
+  pivot_longer(cols = c("2016", "2017", "2018", "2019", "2020"),
+               names_to = "year",
+               values_to = "score_value") %>% 
+  arrange(year) %>%
+  unnest(score_value) %>% 
+  mutate(score_source = as.factor(score_source),
+         year = as.factor(year))
+
+write.csv(expanded_socio_eco_scores, "anova_socio_eco.csv", row.names = FALSE)
+```
+## extracting national voting proportions for each year
+```{r}
+national_votes <- df_vote %>%
+  filter(state == "US") %>%
+  mutate(year = as.factor(year)) %>% 
+  select(year,voted, norm_voter_reg, norm_voter_pop)
+```
+
+## avg scores table
+```{r}
+# Create a new dataframe with average scores for each specific year
+avg_scores <- df_art %>%
+  mutate(year = as.factor(year)) %>%
+  group_by(year) %>%
+  summarise(avg_abortion_score = mean(compound[abortion != ""], na.rm = TRUE),
+            avg_race_score = mean(compound[race != ""], na.rm = TRUE),
+            avg_immigration_score = mean(compound[immigration != ""], na.rm = TRUE),
+            avg_socioeco_score = mean(compound[socio_eco != ""], na.rm = TRUE))
+
+#take the average norm_voter_reg for each year and input into table as a new column 
+avg_scores <- avg_scores %>%
+  left_join(df_vote %>%
+              mutate(year = as.factor(year)) %>% 
+              group_by(year) %>%
+              summarise(prop_regist_voted = mean(norm_voter_reg)),
+            by = "year")
+
+
+avg_scores <- left_join(avg_scores, national_votes, by = "year")
+
+# babas_table <- df_art %>% 
+#   filter(abortion_score = compound[abortion != ""],
+#          race_score = compound[race != ""],
+#          immigration_score = compound[immigration != ""],
+#          socioeco_score = compound[socio_eco != ""])
+# 
+# 
+# babas_table <- df_art %>% 
+#   select(year,
+#          abortion_score = df_art$compound[df_art$abortion != ""], 
+#          race_score = df_art$compound[df_art$race != ""], 
+#          immigration_score = df_art$compound[df_art$immigration != ""], 
+#          socioeco_score = df_art$compound[df_art$socio_eco != ""])
+# 
+# babas_table <- df_art %>% 
+#   select(year,
+#          abortion_score = compound[abortion != "" | !is.na(abortion) ])#, 
+#          # race_score = compound[race != ""], 
+#          # immigration_score = compound[immigration != ""], 
+#          # socioeco_score = compound[socio_eco != ""])
+# 
+# babas_table <- df_art %>% 
+#   select(year,
+#          abortion_score = compound[!is.na(abortion)], 
+#          race_score = compound[!is.na(race)], 
+#          immigration_score = compound[!is.na(immigration)], 
+#          socioeco_score = compound[!is.na(socio_eco)])
+
+
+```
+
+
+
+```{r}
+# 
+# national_abortion_scores_votes <- left_join(media_abortion, national_votes, by = "year")
+# 
+# national_abortion_scores_votes <- national_abortion_scores_votes %>% 
+#   filter(year == 2020 | year ==  2018 | year == 2016) #%>% 
+#   # mutate(year = as.numeric(year)) %>% 
+#   # arrange(year)
+# 
+# national_abortion_scores_votes <- national_abortion_scores_votes %>%
+#   filter(as.character(year) %in% c("2020", "2018", "2016")) %>%
+#   arrange(year)
+
+national_abortion_scores_votes <- left_join(media_abortion, national_votes, by = "year") %>%
+  filter(year == 2020 | year == 2018 | year == 2016) %>%
+  arrange(year)
+
+```
+
+#Data Visualizations
+
+##bar chart twitter abortion
+```{r}
+ggplot(twit_abortion, aes(x = year)) +
+  geom_bar(fill = "steelblue") +
+  labs(x = "Year", y = "Frequency", title = "Annual Frequency Posts on Abortion on Twitter") +
+  theme_minimal()
+```
+
+##Ridgline Plots of Sentiment Scores
+```{r}
+
+# Create the ridgeline plot
+ggplot(media_abortion, aes(x = abortion_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Abortion Sentiment Scores", y = "Year", title = "Annual Media Abortion Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+
+# Create the ridgeline plot
+ggplot(media_race, aes(x = race_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Race Sentiment Scores", y = "Year", title = "Annual Media Race Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+
+# Create the ridgeline plot
+ggplot(media_immigration, aes(x = immigration_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year")+
+  theme_ridges() +
+  labs(x = "Immigration Sentiment Scores", y = "Year", title = "Annual Media Immigration Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+
+# Create the ridgeline plot
+ggplot(media_socio_eco, aes(x = socio_eco_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Socio-economic Sentiment Scores", y = "Year", title = "Annual Media Socio-economic Status Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+```
+
+
+
+```{r}
+
+# Create the ridgeline plot
+ggplot(twit_abortion, aes(x = abortion_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Abortion Sentiment Scores", y = "Year", title = "Annual Twitter Abortion Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+
+# Create the ridgeline plot
+ggplot(twit_race, aes(x = race_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Race Sentiment Scores", y = "Year", title = "Annual Twitter Race Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+
+# Create the ridgeline plot
+ggplot(twit_immigration, aes(x = immigration_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Immigration Sentiment Scores", y = "Year", title = "Annual Twitter Immigration Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+
+
+# Create the ridgeline plot
+ggplot(twit_socio_eco, aes(x = socio_eco_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 3, alpha = 0.8) +
+  scale_fill_viridis_d("Year") +
+  theme_ridges() +
+  labs(x = "Socio-Economic Sentiment Scores", y = "Year", title = "Annual Twitter Socio-economic Status Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5))  
+
+```
+#composite ridgeline plot for
+```{r}
+# Create the first ridgeline plot (abortion)
+plot_abortion <- ggplot(media_abortion, aes(x = abortion_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Abortion") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Create the second ridgeline plot (race)
+plot_race <- ggplot(media_race, aes(x = race_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Race") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Create the third ridgeline plot (immigration)
+plot_immigration <- ggplot(media_immigration, aes(x = immigration_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Immigration") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Create the fourth ridgeline plot (socio-economic)
+plot_socio_eco <- ggplot(media_socio_eco, aes(x = socio_eco_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Socio-economic") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Combine the plots using patchwork
+combined_plots <- plot_abortion + plot_race + plot_immigration + plot_socio_eco +
+  plot_annotation(title = "Annual Media Sentiments across Multiple Biases", 
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 18)))
+
+# Adjust the plot size
+combined_plots
+# combined_plots + plot_layout(widths = c(50, 50))
+
+```
+
+```{r}
+# Create the first ridgeline plot (abortion)
+plot_abortion <- ggplot(twit_abortion, aes(x = abortion_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Abortion") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Create the second ridgeline plot (race)
+plot_race <- ggplot(twit_race, aes(x = race_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Race") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Create the third ridgeline plot (immigration)
+plot_immigration <- ggplot(twit_immigration, aes(x = immigration_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Immigration") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Create the fourth ridgeline plot (socio-economic)
+plot_socio_eco <- ggplot(twit_socio_eco, aes(x = socio_eco_scores, y = year, fill = year)) +
+  geom_density_ridges(scale = 2.25, alpha = 0.8) +
+  scale_fill_viridis_d("") +
+  theme_ridges() +
+  labs(x = "Sentiment Scores", y = "Year", title = "Socio-economic") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") #,
+        # panel.border = element_rect(color = "black", fill = NA, size = 5))
+
+# Combine the plots using patchwork
+combined_plots <- plot_abortion + plot_race + plot_immigration + plot_socio_eco +
+  plot_annotation(title = "Annual Twitter Sentiments across Multiple Biases", 
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 18)))
+
+# Adjust the plot size
+combined_plots
+# combined_plots + plot_layout(widths = c(50, 50))
+
+```
+
+
+##Linear Relationship Visualizations
+```{r}
+# library(ggplot2)
+
+ggplot(national_abortion_scores_votes, aes(x = year, y = abortion_scores, size = norm_voter_pop)) +
+  geom_point() +
+  labs(x = "Year", y = "Abortion Scores", size = "Norm Voter reg")
+
+```
+## box plots for abortion sentiment scores from twitter and media
+
+```{r}
+ggplot(expanded_abortion_scores, aes(x = score_source, y = score_value)) +
+  geom_boxplot() +
+  labs(x = "Score Source", y = "Score Value", title = "Box Plot Showing Spread of Sentiment Scores for Abortion Bias") +
+  theme_bw()
+```
+#Boxplot for Two Way ANOVA
+```{r}
+# Load required libraries
+# library(ggplot2)
+# library(viridis)
+
+# Create the boxplot with Viridis color scheme
+ggplot(expanded_abortion_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_boxplot(color = "red") +
+  labs(x = "Year", y = "Score Value",title = "Abortion Sentiments Two-Way ANOVA Visual ", fill = "Score Source") +
+  scale_fill_viridis_d() +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12), 
+                axis.title.y = element_text(hjust = 0.5, size = 12),
+                plot.title = element_text(hjust = 0.5))+
+  guides(fill = guide_legend(keywidth = unit(2, "cm"), keyheight = unit(2, "cm")))
+
+```
+```{r}
+ggplot(expanded_abortion_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_boxplot() +
+  labs(x = "Year", y = "Score Value", title = "Abortion Sentiments Two-Way ANOVA Visual") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  guides(fill = guide_legend(keywidth = unit(2, "cm"), keyheight = unit(2, "cm")))
+```
+
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(viridis)
+
+# Create the boxplot with Viridis color scheme
+a <- ggplot(expanded_abortion_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_boxplot() +
+  labs(x = "Year", y = "Score Value", fill = "Score Source", title = "Abortion Sentiments Two-Way ANOVA Visual") +
+  scale_fill_viridis_d() +
+  theme_minimal()+
+  theme(
+    axis.title = element_text(size = 14),   # Increase the size of axis titles
+    axis.text = element_text(size = 13),    # Increase the size of axis labels
+    legend.title = element_text(size = 14), # Increase the size of legend title
+    legend.text = element_text(size = 13),   # Increase the size of legend labels
+    plot.title = element_text(size = 18)
+  )
+
+# Create the boxplot with Viridis color scheme
+r <- ggplot(expanded_race_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_boxplot() +
+  labs(x = "Year", y = "Score Value", fill = "Score Source",  title = "Race Sentiments Two-Way ANOVA Visual") +
+  scale_fill_viridis_d() +
+  theme_minimal()+
+  theme(
+    axis.title = element_text(size = 14),   # Increase the size of axis titles
+    axis.text = element_text(size = 13),    # Increase the size of axis labels
+    legend.title = element_text(size = 14), # Increase the size of legend title
+    legend.text = element_text(size = 13),   # Increase the size of legend labels
+    plot.title = element_text(size = 18)
+  )
+
+# Create the boxplot with Viridis color scheme
+i <- ggplot(expanded_immigration_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_boxplot() +
+  labs(x = "Year", y = "Score Value", fill = "Score Source",  title = "Immigration Sentiments Two-Way ANOVA Visual")+
+  scale_fill_viridis_d() +
+  theme_minimal()+
+  theme(
+    axis.title = element_text(size = 14),   # Increase the size of axis titles
+    axis.text = element_text(size = 13),    # Increase the size of axis labels
+    legend.title = element_text(size = 14), # Increase the size of legend title
+    legend.text = element_text(size = 13),   # Increase the size of legend labels
+    plot.title = element_text(size = 18)
+  )
+
+# Create the boxplot with Viridis color scheme
+s <- ggplot(expanded_socio_eco_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_boxplot() +
+  labs(x = "Year", y = "Score Value", fill = "Score Source",  title = "Socio-Economic Sentiments Two-Way ANOVA Visual") +
+  scale_fill_viridis_d() +
+  theme_minimal()+
+  theme(
+    axis.title = element_text(size = 14),   # Increase the size of axis titles
+    axis.text = element_text(size = 13),    # Increase the size of axis labels
+    legend.title = element_text(size = 14), # Increase the size of legend title
+    legend.text = element_text(size = 13),   # Increase the size of legend labels
+    plot.title = element_text(size = 18)
+  )
+
+# Save the aplot with the desired width
+ggsave("abortion_boxplot.png", a, width = 10, height = 4)
+ggsave("race_boxplot.png", r, width = 10, height = 4)
+ggsave("immigration_boxplot.png", i, width = 10, height = 4)
+ggsave("socio_eco_boxplot.png", s, width = 10, height = 4)
+
+```
+
+
+##violin plot
+```{r}
+ggplot(expanded_abortion_scores, aes(x = score_source, y = score_value)) +
+  geom_violin() +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "red", fill = "blue") +
+  labs(x = "Score Source", y = "Score Value", title = "Violin Plot") +
+  theme_bw()
+```
+```{r}
+# Create the violin plot with multiple categories
+ggplot(expanded_abortion_scores, aes(x = year, y = score_value, fill = score_source)) +
+  geom_violin() +
+  labs(x = "Year", y = "Score Value", title = "Violin Plot for Score source by Year") +
+  theme_bw() +
+  scale_fill_discrete(name = "Score source")
+```
+
+```{r}
+# Create the side-by-side violin plot
+ggplot(expanded_abortion_scores, aes(x = factor(year), y = score_value, fill = score_source)) +
+  geom_violin(position = "dodge") +
+  labs(x = "Year", y = "Score Value", title = "Side-by-Side Violin Plot for Score source by Year") +
+  theme_bw() +
+  scale_fill_discrete(name = "Score source")
+```
+
+#HERE BITCH
+```{r}
+ggplot(twit_model_table, aes(x = compound, y = norm_vote_count)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) + 
+  labs(x = "compound sentiment scores for every bias", y = "Vote Counts in Different Regions" , title = "Twitter")
+
+```
+
+```{r}
+ggplot(media_model_table, aes(x = compound, y = norm_vote_count, color = bias)) +
+  geom_point() +
+  facet_grid(source ~ year)+
+  labs(x = "Compound Sentiment Scores For All Bias Terms", y = "Voter Count", title = "Media Sentiments and Election Voter Counts")+
+  theme_bw()
+
+```
+```{r}
+
+```
+
+```{r}
+ggplot(twitter, aes(x = compound, y = norm_voter_reg,)) +
+  geom_point() +
+  facet_grid(year ~ state)+
+  labs(x = "Compound Sentiment Scores For All Bias Terms", y = "Percentage of Registered Voters that Voted", title = "Twitter Sentiments and Election Voter Counts")+
+  theme_bw()+
+  theme(plot.width = 10)
+
+
+```
+
+
+```{r}
+# library(ggplot2)
+
+ggplot(national_abortion_scores_votes, aes(x = year, y = abortion_scores, size = voted)) +
+  geom_point() +
+  labs(x = "Year", y = "Abortion Scores", size = "voted")
+
+```
+```{r}
+ggplot(national_abortion_scores_votes) +
+  geom_violin(aes(x = year, y = abortion_scores, fill = year), width = 0.5) +
+  geom_line(aes(x = year, y = norm_voter_reg, group = 1), color = "blue", size = 1.5) +
+  labs(x = "year", y = "abortion_scores", fill = "year", color = "norm_voter_reg") +
+  scale_fill_discrete() +
+  scale_color_identity() +
+  theme_minimal()
+```
+```{r}
+
+ggplot(national_abortion_scores_votes, aes(x = voted, y = abortion_scores )) +
+  geom_point() +
+  labs(x = "Vote Counts", y = "Abortion Scores") 
+```
+```{r}
+
+ggplot(national_votes, aes(x = year, y = voted)) +
+  geom_point() +
+  labs(x = "Year", y = "Vote Counts") 
+```
+
+```{r}
+# library(ggplot2)
+# 
+# ggplot(subset(df_regional_bias_votes, bias == "Abortion"), aes(x = norm_vote_count, y = compound, color = year)) +
+#   geom_point() +
+#   labs(x = "Normalized Regional Vote Count", y = "Compound Sentiment Scores", title = "Abortion Compound Scores Associated with Regional Vote Counts")
+
+```
+
+```{r}
+# # Convert year column to factor for better ordering on the plot
+# df_regional_bias_votes$region <- factor(df_regional_bias_votes$region)  
+# df_regional_bias_votes <- distinct(df_regional_bias_votes)
+# 
+# # Create the ridgeline plot
+# ggplot(df_regional_bias_votes, aes(x = compound, y = region, fill = region)) +
+#   geom_density_ridges(scale = 3, alpha = 0.8) +
+#   scale_fill_viridis_d() +
+#   theme_ridges() +
+#   labs(x = "Compound Sentiment Scores", y = "Region", title = "Distribution of Bias Sentiment Scores by Region")
+
+# # Convert year column to factor for better ordering on the plot
+# media_race$year <- factor(media_race$year)
+# 
+# # Create the ridgeline plot
+# ggplot(media_race, aes(x = race_scores, y = year, fill = year)) +
+#   geom_density_ridges(scale = 3, alpha = 0.8) +
+#   scale_fill_viridis_d() +
+#   theme_ridges() +
+#   labs(x = "Race Scores", y = "Year", title = "Distribution of Race Sebtiment Scores by Year")
+# 
+# # Convert year column to factor for better ordering on the plot
+# media_immigration$year <- factor(media_immigration$year)
+# 
+# # Create the ridgeline plot
+# ggplot(media_immigration, aes(x = immigration_scores, y = year, fill = year)) +
+#   geom_density_ridges(scale = 3, alpha = 0.8) +
+#   scale_fill_viridis_d() +
+#   theme_ridges() +
+#   labs(x = "Immigration Scores", y = "Year", title = "Distribution of Immigration Sentiment Scores by Year")
+# 
+# # Convert year column to factor for better ordering on the plot
+# media_socio_eco$year <- factor(media_socio_eco$year)
+# 
+# # Create the ridgeline plot
+# ggplot(media_socio_eco, aes(x = socio_eco_scores, y = year, fill = year)) +
+#   geom_density_ridges(scale = 3, alpha = 0.8) +
+#   scale_fill_viridis_d() +
+#   theme_ridges() +
+#   labs(x = "Socio-Economic Scores", y = "Year", title = "Distribution of Socio-Economic Sentiment Scores by Year")
+
+```
+```{r}
+# ggplot(df_regional_bias_votes, aes(x = year, y = compound, fill = region)) +
+#   geom_violin() +
+#   labs(x = "Region", y = "Compound Sentiment Score", title = "Compound Sentiment Scores by Region")
+
+```
+
+#Time Series Attempts
+```{r}
+# Convert year and abortion_scores to a time series object
+abortion_ts <- ts(media_abortion$abortion_scores, start = min(media_abortion$year), frequency = 1)
+
+# Fit a linear regression model
+lm_model <- lm(abortion_ts ~ time(abortion_ts))
+
+# Plot the time series data and trendline
+plot(abortion_ts, main = "Abortion Sentiment Scores over Time", xlab = "Year", ylab = "Sentiment Scores")
+abline(lm_model, col = "red")
+
+```
+```{r}
+library(xts)
+library(forecast)
+
+# Create an xts object with the abortion score
+abortion_xts <- xts(media_abortion$abortion_scores, order.by = as.Date(media_abortion$year))
+
+# Fit a time series model using the appropriate method
+abortion_model <- ets(abortion_xts)
+
+# Generate forecasts
+abortion_forecast <- forecast(abortion_model, h = 10)  # Change the value of 'h' as needed
+
+# Plot the original data and the forecasted values
+plot(abortion_forecast, main = "Abortion Sentiment Scores Forecast")
+
+```
+
+
+```{r}
+# install.packages("forecast")
+library(forecast)
+
+abortion_ts <- ts(media_abortion$abortion_scores, start = media_abortion$year[1])
+
+# Convert the data to a time series object with correct start and frequency
+# abortion_ts <- ts(media_abortion$abortion_scores, start = c(min(media_abortion$year)), frequency = 1)
+
+plot(abortion_ts, main = "Abortion Sentiment Scores over Time")
+
+abortion_model <- ets(abortion_ts)
+
+abortion_model <- ets(abortion_ts)
+
+abortion_forecast <- forecast(abortion_model, h = 10)  # Change the value of 'h' as needed
+
+plot(abortion_forecast, main = "Abortion Sentiment Scores Forecast")
+
+```
+```{r}
+# library(ggplot2)
+
+# Assuming your time series data is in a dataframe named 'data' with columns 'year' and 'abortion_scores'
+ggplot(media_abortion, aes(x = year, y = abortion_scores)) +
+  geom_line() +  # Plot the time series
+  geom_smooth(method = "lm", se = FALSE) +  # Add a trendline using linear regression
+  labs(title = "Abortion Sentiment Scores", x = "Year", y = "Sentiment Score")
+
+```
+```{r}
+# Step 1: Convert the data into a suitable format
+abortion_ts <- ts(media_abortion$abortion_scores, start = min(media_abortion$year), frequency = 1)
+
+# Step 2: Explore the data
+plot(abortion_ts, main = "Abortion Sentiment Scores over Time")
+
+# Step 3: Decompose the time series
+decomposed <- decompose(abortion_ts)
+plot(decomposed)
+
+# Step 4: Check for stationarity
+adf.test(abortion_ts)
+
+# Step 5: Select a suitable time series model
+model <- auto.arima(abortion_ts)
+
+# Step 6: Estimate the model
+fit <- Arima(abortion_ts, model)
+
+# Step 7: Validate the model
+validation_data <- window(abortion_ts, start = 2018)
+forecast <- forecast(fit, h = length(validation_data))
+
+plot(forecast)
+lines(validation_data, col = "red")
+
+# Step 8: Make predictions
+future_forecast <- forecast(fit, h = 10)  # Generate forecasts for the next 10 periods
+
+# Step 9: Evaluate the results
+accuracy(forecast)
+
+```
+
+
+
+```{r}
+# Create a time series object for abortion scores
+abortion_ts <- ts(avg_scores$avg_abortion_score, start = min(avg_scores$year), frequency = 1)
+
+# Fit a time series model using the appropriate method
+abortion_model <- ets(abortion_ts)
+
+# Generate forecasts
+abortion_forecast <- forecast(abortion_model, h = 10)  # Change the value of 'h' as needed
+
+# Plot the original data and the forecasted values
+plot(abortion_forecast, main = "Abortion Sentiment Scores Forecast")
+
+```
+
+```{r}
+# Create a time series object for the abortion scores
+abortion_ts <- ts(avg_scores$avg_abortion_score, start = min(avg_scores$year), frequency = 1)
+
+# Fit an ARIMA model
+arima_model <- auto.arima(abortion_ts)  # Replace p, d, q with appropriate values
+
+# Generate forecasts
+arima_forecast <- forecast(arima_model, h = 10)  # Change the value of 'h' as needed
+
+# Plot the original data and the forecasted values
+plot(arima_forecast, main = "Abortion Sentiment Scores Forecast (ARIMA)")
+
+```
+
+
+
+```{r}
+# Create separate time series objects for each column
+abortion_ts <- ts(avg_scores$avg_abortion_score, start = min(year))
+race_ts <- ts(avg_scores$avg_race_score, start = min(year))
+immigration_ts <- ts(avg_scores$avg_immigration_score, start = min(year))
+socioeco_ts <- ts(avg_scores$avg_socioeco_score, start = min(year))
+
+# Fit time series models for each column
+abortion_model <- ets(abortion_ts)
+race_model <- ets(race_ts)
+immigration_model <- ets(immigration_ts)
+socioeco_model <- ets(socioeco_ts)
+
+# Generate forecasts for each model
+abortion_forecast <- forecast(abortion_model)
+race_forecast <- forecast(race_model)
+immigration_forecast <- forecast(immigration_model)
+socioeco_forecast <- forecast(socioeco_model)
+
+# Plot the original data and the forecasted values for each column
+plot(abortion_forecast, main = "Abortion Sentiment Scores Forecast")
+plot(race_forecast, main = "Race Sentiment Scores Forecast")
+plot(immigration_forecast, main = "Immigration Sentiment Scores Forecast")
+plot(socioeco_forecast, main = "Socio-Economic Sentiment Scores Forecast")
+
+
+```
+
+```{r}
+# Filter the avg_scores dataframe for the desired years
+filtered_avg_scores <- avg_scores %>%
+  filter(year %in% c(2016, 2018, 2020))
+
+# Scatter plot 1
+plot1 <- ggplot(filtered_avg_scores, aes(x = year, y = avg_abortion_score, size = prop_regist_voted)) +
+  geom_point() +
+  labs(title = "Abortion Score by Year", x = "Year", y = "Average Abortion Score")
+
+# Scatter plot 2
+plot2 <- ggplot(filtered_avg_scores, aes(x = year, y = avg_race_score, size = prop_regist_voted)) +
+  geom_point() +
+  labs(title = "Race Score by Year", x = "Year", y = "Average Race Score")
+
+# Scatter plot 3
+plot3 <- ggplot(filtered_avg_scores, aes(x = year, y = avg_immigration_score, size = prop_regist_voted)) +
+  geom_point() +
+  labs(title = "Immigration Score by Year", x = "Year", y = "Average Immigration Score")
+
+# Scatter plot 4
+plot4 <- ggplot(filtered_avg_scores, aes(x = year, y = avg_socioeco_score, size = prop_regist_voted)) +
+  geom_point() +
+  labs(title = "Socioeconomic Score by Year", x = "Year", y = "Average Socioeconomic Score")
+
+# Combine the plots using grid.arrange() from the gridExtra package
+gridExtra::grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
+
+```
+Observation:
+Generally when the sentiment is higher the proportion of registered voters that turnout to vote in a given year is less than when a sentiment score is lower (closer to neutral) in other years. When sentiment scores are lower a higher proportion of voters come out to vote.
+
+```{r}
+# Line chart
+# ggplot(avg_scores, aes(x = year)) +
+#   geom_line(aes(y = avg_abortion_score), color = "red", linetype = "solid") +
+#   geom_line(aes(y = avg_race_score), color = "blue", linetype = "dashed") +
+#   geom_line(aes(y = avg_immigration_score), color = "green", linetype = "dotdash") +
+#   geom_line(aes(y = avg_socioeco_score), color = "purple", linetype = "dotted") +
+#   labs(title = "Sentiment Scores over Time", x = "Year", y = "Sentiment Score") +
+#   scale_color_manual(
+#     values = c("red", "blue", "green", "purple"),
+#     labels = c("Avg Abortion Score", "Avg Race Score", "Avg Immigration Score", "Avg Socio-Economic Score")
+#   ) +
+#   theme_bw()
+```
+
+
+#Models
+
+##Time Series
+Main idea is to create a time series model for each individual bias's sentiment scores across all years.
+
+##Linear Regression
+Main idea here is to have the sentiment scores for the individual biases and year predict voter turnout
+
+##ANOVA
+### abortion bias b/w media & twitter
+b/w twitter and news sentiments for abortion compound sentiment scores bias 
+```{r}
+# Create the ANOVA model
+model <- aov(score_value ~ year * score_source, data = expanded_abortion_scores)
+
+# Print the ANOVA table
+summary(model)
+
+```
+### race bias b/w media & twitter
+```{r}
+# Create the ANOVA model
+model <- aov(score_value ~ year * score_source, data = expanded_race_scores)
+
+# Print the ANOVA table
+summary(model)
+```
+### immigration bias b/w media & twitter
+```{r}
+# Create the ANOVA model
+model <- aov(score_value ~ year * score_source, data = expanded_immigration_scores)
+
+# Print the ANOVA table
+summary(model)
+```
+### socio-economic bias b/w media & twitter
+```{r}
+# Create the ANOVA model
+model <- aov(score_value ~ year * score_source, data = expanded_socio_eco_scores)
+
+# Print the ANOVA table
+summary(model)
+```
+
+##Intraclass Correlation Coefficient
+```{r}
+# library(psych)
+library(irr)
+
+# Assuming you have two vectors of scores: scores1 and scores2
+result <- icc(media_abortion$abortion_scores, twit_abortion$abortion_scores, model = "twoway", type = "agreement", unit = "single")
+# print(result)
+# # Extract the ICC value
+# icc_value <- result$ICC[1]
+# 
+# # Print the ICC value
+# cat("Intraclass Correlation Coefficient (ICC):", icc_value, "\n")
+
+```
+
+ Single Score Intraclass Correlation
+
+   Model: twoway 
+   Type : agreement 
+
+   Subjects = 1341 
+     Raters = 1 
+   ICC(A,1) = NA
+   
+   
+#VALIDATION
+
+##levene's test for two way anova
+
+```{r}
+# # Install and load the lawstat package
+# install.packages("lawstat")
+# library(lawstat)
+# 
+# # Perform Levene's test for each combination of factor levels
+# result <- by(expanded_abortion_scores$score_value, list(expanded_abortion_scores$year, expanded_abortion_scores$score_source), levene.test)
+# 
+# # Print the test results
+# print(result)
+
+```
+
+```{r}
+# Install and load the car package
+install.packages("car")
+library(car)
+
+# Perform Levene's test for the groups 'year' and 'score_source'
+result <- leveneTest(expanded_abortion_scores$score_value, 
+                     list(expanded_abortion_scores$year, expanded_abortion_scores$score_source))
+
+# Print the test result
+print(result)
+```
+### abortion
+```{r}
+# Separate the response variable and grouping variables
+response <- expanded_abortion_scores$score_value
+groups <- interaction(expanded_abortion_scores$year, expanded_abortion_scores$score_source)
+
+# Perform Bartlett's test
+result <- bartlett.test(response, groups)
+
+# Print the test result
+print(result)
+
+```
+### race
+```{r}
+# Separate the response variable and grouping variables
+response <- expanded_race_scores$score_value
+groups <- interaction(expanded_race_scores$year, expanded_race_scores$score_source)
+
+# Perform Bartlett's test
+result <- bartlett.test(response, groups)
+
+# Print the test result
+print(result)
+
+```
+
+### immigration
+```{r}
+# Separate the response variable and grouping variables
+response <- expanded_immigration_scores$score_value
+groups <- interaction(expanded_immigration_scores$year, expanded_immigration_scores$score_source)
+
+# Perform Bartlett's test
+result <- bartlett.test(response, groups)
+
+# Print the test result
+print(result)
+
+```
+
+### Socio-economic
+```{r}
+# Separate the response variable and grouping variables
+response <- expanded_socio_eco_scores$score_value
+groups <- interaction(expanded_socio_eco_scores$year, expanded_socio_eco_scores$score_source)
+
+# Perform Bartlett's test
+result <- bartlett.test(response, groups)
+
+# Print the test result
+print(result)
+
+```
