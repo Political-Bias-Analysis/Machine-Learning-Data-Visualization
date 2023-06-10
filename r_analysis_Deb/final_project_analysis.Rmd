@@ -14,6 +14,7 @@ library(tidyverse)
 library(forecast)
 library(ggridges)
 library(patchwork)
+library(viridis)
 
 ```
 
@@ -335,6 +336,20 @@ ggplot(twit_abortion, aes(x = year)) +
   geom_bar(fill = "steelblue") +
   labs(x = "Year", y = "Frequency", title = "Annual Frequency Posts on Abortion on Twitter") +
   theme_minimal()
+```
+```{r}
+library(viridis)
+
+ggplot(media_abortion, aes(x = abortion_scores)) +
+  geom_density( fill = "lightblue") +
+  # scale_fill_viridis_d() +
+  labs(x = "Sentiment Scores", y = "Density", title = "Abortion Sentiment Scores") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 18),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12))
+
+
 ```
 
 ##Ridgline Plots of Sentiment Scores
@@ -686,7 +701,7 @@ ggplot(expanded_immigration_scores, aes(x = score_source, y = score_value, fill 
 ```{r}
 # Load required libraries
 # library(ggplot2)
-# library(viridis)
+# 
 
 # Create the boxplot with Viridis color scheme
 ggplot(expanded_abortion_scores, aes(x = year, y = score_value, fill = score_source)) +
