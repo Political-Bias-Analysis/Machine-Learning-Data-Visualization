@@ -806,9 +806,7 @@ ggplot(expanded_abortion_scores, aes(x = factor(year), y = score_value, fill = s
 ```
 
 
-#idk linear?
-
-#HERE BITCH
+#linear?
 Levene's and Kruskal-Wallis Tests)
 ```{r}
 ggplot(twit_model_table, aes(x = compound, y = norm_vote_count)) +
