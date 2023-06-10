@@ -39,21 +39,6 @@ elec_state <- read.csv("election_state_h_r.csv")
 # print(categories)
 ```
 
-```{r}
-print(df_art)
-colnames(df_art)
-```
-
-```{r}
-# Check if a column is completely empty
-is_empty <- all(is.na(df_art$socio_eco))
-```
-
-```{r}
-# summary(df_art)
-typeof(df_art)
-# head(df_art)
-```
 ##media sentiment scores tables
 ```{r}
 media_abortion <- df_art %>%
@@ -85,19 +70,19 @@ media_socio_eco <- df_art %>%
 ```
 
 ```{r}
-nrow(df_twit %>%
-  filter(!is.na(abortion) & abortion != "") %>%
-  distinct() %>%
-  select(year, abortion_scores = compound) %>%
-  mutate(year = as.factor(year)))
-
-nrow(df_twit %>%
-  filter(!is.na(abortion) & abortion != "")%>%
-  distinct())
-
-test <- df_twit %>%
-  filter(!is.na(abortion) & abortion != "")%>%
-  distinct()
+# nrow(df_twit %>%
+#   filter(!is.na(abortion) & abortion != "") %>%
+#   distinct() %>%
+#   select(year, abortion_scores = compound) %>%
+#   mutate(year = as.factor(year)))
+# 
+# nrow(df_twit %>%
+#   filter(!is.na(abortion) & abortion != "")%>%
+#   distinct())
+# 
+# test <- df_twit %>%
+#   filter(!is.na(abortion) & abortion != "")%>%
+#   distinct()
 
 ```
 
@@ -568,6 +553,62 @@ combined_plots
 # combined_plots + plot_layout(widths = c(50, 50))
 
 ```
+#ATTEMPT at converting ridgleine plots to density graphs
+```{r}
+# Create the first density plot (abortion)
+plot_abortion <- ggplot(twit_abortion, aes(x = abortion_scores)) +
+  geom_density(alpha = 0.8) +
+  # scale_fill_viridis_d("") +
+  theme_minimal() +
+  labs(x = "Sentiment Scores", y = "Density", title = "Abortion") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+# Create the second density plot (race)
+plot_race <- ggplot(twit_race, aes(x = race_scores)) +
+  geom_density(alpha = 0.8) +
+  # scale_fill_viridis_d("") +
+  theme_minimal() +
+  labs(x = "Sentiment Scores", y = "Density", title = "Race") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+# Create the third density plot (immigration)
+plot_immigration <- ggplot(twit_immigration, aes(x = immigration_scores)) +
+  geom_density(alpha = 0.8) +
+  # scale_fill_viridis_d("") +
+  theme_minimal() +
+  labs(x = "Sentiment Scores", y = "Density", title = "Immigration") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+# Create the fourth density plot (socio-economic)
+plot_socio_eco <- ggplot(twit_socio_eco, aes(x = socio_eco_scores)) +
+  geom_density(alpha = 0.8) +
+  # scale_fill_viridis_d("") +
+  theme_minimal() +
+  labs(x = "Sentiment Scores", y = "Density", title = "Socio-economic") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(hjust = 0.5, size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+# Combine the plots using patchwork
+combined_plots <- plot_abortion + plot_race + plot_immigration + plot_socio_eco +
+  plot_annotation(title = "Annual Twitter Sentiments across Multiple Biases", 
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 18)))
+
+# Adjust the plot size
+combined_plots + plot_layout(widths = c(50, 50))
+
+
+```
 
 
 ##Linear Relationship Visualizations
@@ -587,6 +628,60 @@ ggplot(expanded_abortion_scores, aes(x = score_source, y = score_value)) +
   labs(x = "Score Source", y = "Score Value", title = "Box Plot Showing Spread of Sentiment Scores for Abortion Bias") +
   theme_bw()
 ```
+
+## box plots for abortion sentiment scores from twitter and media
+
+```{r}
+ggplot(expanded_immigration_scores, aes(x = score_source, y = score_value, fill = score_source)) +
+  geom_violin() +
+  scale_fill_viridis_d() +
+  labs(x = "Score Source", y = "Score Value", title = "Sentiment Scores for Immigration Bias") +
+  theme_bw()+
+guides(fill = FALSE) +
+  theme(axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12))+
+  stat_summary(fun = "median", geom = "errorbar", width = 1, color = "grey", linewidth = 1.5)
+```
+```{r}
+# Calculate medians for each score source
+medians <- expanded_immigration_scores %>%
+  group_by(score_source) %>%
+  summarize(median_score = round(median(score_value), 2))  # Round medians to two decimal places
+
+ggplot(expanded_immigration_scores, aes(x = score_source, y = score_value, fill = score_source)) +
+  geom_violin() +
+  scale_fill_viridis_d() +
+  labs(x = "Score Source", y = "Score Value", title = "Sentiment Scores for Immigration Bias") +
+  theme_minimal() +
+  guides(fill = FALSE) +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        plot.title = element_text(hjust = 0.5, size = 18)) +  # Increase plot title size to 16
+  geom_hline(data = medians, aes(yintercept = median_score), color = "darkgrey", linetype = "solid", size = 1.5) +
+  geom_text(data = medians, aes(label = median_score, y = median_score + 0.1), size = 4, color = "black", vjust = -0.5)
+
+
+```
+
+#Boxplot for Two Way ANOVA
+
+```{r}
+ggplot(expanded_immigration_scores, aes(x = score_source, y = score_value, fill = score_source)) +
+  geom_boxplot(color = "grey", size = 1.5, outlier.shape = NA, notch = FALSE) +
+  geom_segment(aes(x = score_source, xend = score_source, y = median(score_value), yend = median(score_value)),
+               color = "black", linetype = "dashed", size = 4) +
+  geom_text(stat = "summary", fun = median, aes(label = round(..y.., 2)),
+            position = position_nudge(y = 0.2), size = 4, vjust = -0.5) +
+  scale_fill_viridis_d() +
+  labs(x = "Score Source", y = "Score Value", title = "Immigration Sentiment Scores by Source") +
+  theme_minimal() +
+  guides(fill = FALSE) +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        plot.title = element_text(hjust = 0.5, size = 18))
+
+```
+
 #Boxplot for Two Way ANOVA
 ```{r}
 # Load required libraries
@@ -710,7 +805,11 @@ ggplot(expanded_abortion_scores, aes(x = factor(year), y = score_value, fill = s
   scale_fill_discrete(name = "Score source")
 ```
 
+
+#idk linear?
+
 #HERE BITCH
+Levene's and Kruskal-Wallis Tests)
 ```{r}
 ggplot(twit_model_table, aes(x = compound, y = norm_vote_count)) +
   geom_point() +
@@ -1192,3 +1291,44 @@ result <- bartlett.test(response, groups)
 print(result)
 
 ```
+
+#KRUSKAL WALLIS TEST
+```{r}
+# Perform Kruskal-Wallis test
+kruskal.test(score_value ~ score_source, data = expanded_socio_eco_scores)
+kruskal.test(score_value ~ score_source, data = expanded_immigration_scores)
+kruskal.test(score_value ~ score_source, data = expanded_abortion_scores)
+kruskal.test(score_value ~ score_source, data = expanded_race_scores)
+```
+#RANDOM SAMPLING KRUSKAL
+```{r}
+# Select the desired categories and sample 100 rows from each
+random_expanded_race_scores <- expanded_race_scores %>%
+  filter(score_source %in% c("news article sentiment scores", "twitter sentiment scores")) %>%
+  group_by(score_source) %>%
+  slice_sample(n = 500, replace = FALSE)
+
+# Select the desired categories and sample 100 rows from each
+random_expanded_immigration_scores <- expanded_immigration_scores %>%
+  filter(score_source %in% c("news article sentiment scores", "twitter sentiment scores")) %>%
+  group_by(score_source) %>%
+  slice_sample(n = 500, replace = FALSE)
+
+# Select the desired categories and sample 100 rows from each
+random_expanded_abortion_scores <- expanded_abortion_scores %>%
+  filter(score_source %in% c("news article sentiment scores", "twitter sentiment scores")) %>%
+  group_by(score_source) %>%
+  slice_sample(n = 500, replace = FALSE)
+
+# Select the desired categories and sample 100 rows from each
+random_expanded_socio_eco_scores <- expanded_socio_eco_scores %>%
+  filter(score_source %in% c("news article sentiment scores", "twitter sentiment scores")) %>%
+  group_by(score_source) %>%
+  slice_sample(n = 500, replace = FALSE)
+
+kruskal.test(score_value ~ score_source, data = random_expanded_socio_eco_scores)
+kruskal.test(score_value ~ score_source, data = random_expanded_immigration_scores)
+kruskal.test(score_value ~ score_source, data = random_expanded_abortion_scores)
+kruskal.test(score_value ~ score_source, data = random_expanded_race_scores)
+```
+
