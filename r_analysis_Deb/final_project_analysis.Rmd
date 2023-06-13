@@ -382,10 +382,11 @@ ggplot(media_immigration, aes(x = immigration_scores, y = year, fill = year)) +
   geom_density_ridges(scale = 3, alpha = 0.8) +
   scale_fill_viridis_d("Year")+
   theme_ridges() +
-  labs(x = "Immigration Sentiment Scores", y = "Year", title = "Annual Media Immigration Scores") +
-  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
-        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
-        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+  labs(x = "Sentiment Scores", y = "Year", title = "Annual Media Immigration Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 20),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5, size = 20),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5, size = 28),
+        legend.position = "none")   # Center y-axis labels
 
 
 # Create the ridgeline plot
@@ -431,10 +432,11 @@ ggplot(twit_immigration, aes(x = immigration_scores, y = year, fill = year)) +
   geom_density_ridges(scale = 3, alpha = 0.8) +
   scale_fill_viridis_d("Year") +
   theme_ridges() +
-  labs(x = "Immigration Sentiment Scores", y = "Year", title = "Annual Twitter Immigration Scores") +
-  theme(axis.title.x = element_text(hjust = 0.5),   # Center x-axis label
-        axis.title.y = element_text(hjust = 0.5),   # Center y-axis labels
-        plot.title = element_text(hjust = 0.5))   # Center y-axis labels
+  labs(x = "Sentiment Scores", y = "Year", title = "Annual Twitter Immigration Scores") +
+  theme(axis.title.x = element_text(hjust = 0.5, size = 20),   # Center x-axis label
+        axis.title.y = element_text(hjust = 0.5, size = 20),   # Center y-axis labels
+        plot.title = element_text(hjust = 0.5, size = 28),
+        legend.position = "none")   # Center y-axis labels
 
 
 # Create the ridgeline plot
